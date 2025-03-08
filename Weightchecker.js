@@ -9,18 +9,18 @@ const WeightChecker = ({ navigation }) => {
   const [weightRecords, setWeightRecords] = useState([]);
   const [message, setMessage] = useState('');
 
+  const currentUserKey = 'MrReaper03'; // Replace with dynamic user login if needed
+
   useEffect(() => {
     const loadData = async () => {
       try {
-        const records = await AsyncStorage.getItem('@weightRecords');
-        const savedGoalWeight = await AsyncStorage.getItem('@goalWeight');
+        const storedData = await AsyncStorage.getItem('@userRecords');
+        if (storedData !== null) {
+          const parsedData = JSON.parse(storedData);
+          const userRecord = parsedData[currentUserKey] || {};
 
-        if (records !== null) {
-          setWeightRecords(JSON.parse(records));
-        }
-
-        if (savedGoalWeight !== null) {
-          setGoalWeight(savedGoalWeight);
+          setWeightRecords(userRecord.weightRecords || []);
+          setGoalWeight(userRecord.goalWeight || '');
         }
       } catch (error) {
         console.error('Error loading data:', error);
@@ -33,8 +33,16 @@ const WeightChecker = ({ navigation }) => {
   useEffect(() => {
     const saveData = async () => {
       try {
-        await AsyncStorage.setItem('@weightRecords', JSON.stringify(weightRecords));
-        await AsyncStorage.setItem('@goalWeight', goalWeight);
+        const storedData = await AsyncStorage.getItem('@userRecords');
+        const parsedData = storedData ? JSON.parse(storedData) : {};
+
+        parsedData[currentUserKey] = {
+          ...parsedData[currentUserKey],
+          weightRecords,
+          goalWeight,
+        };
+
+        await AsyncStorage.setItem('@userRecords', JSON.stringify(parsedData));
       } catch (error) {
         console.error('Error saving data:', error);
       }
@@ -54,7 +62,8 @@ const WeightChecker = ({ navigation }) => {
       weight: currentWeight,
     };
 
-    setWeightRecords([...weightRecords, weightRecord]);
+    const updatedRecords = [...weightRecords, weightRecord];
+    setWeightRecords(updatedRecords);
 
     const weightDifference = goalWeight - currentWeight;
     if (weightDifference === 0) {
@@ -66,11 +75,22 @@ const WeightChecker = ({ navigation }) => {
     }
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setGoalWeight('');
     setCurrentWeight('');
     setWeightRecords([]);
     setMessage('');
+
+    try {
+      const storedData = await AsyncStorage.getItem('@userRecords');
+      if (storedData) {
+        const parsedData = JSON.parse(storedData);
+        parsedData[currentUserKey] = { ...parsedData[currentUserKey], weightRecords: [], goalWeight: '' };
+        await AsyncStorage.setItem('@userRecords', JSON.stringify(parsedData));
+      }
+    } catch (error) {
+      console.error('Error resetting data:', error);
+    }
   };
 
   return (
